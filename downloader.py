@@ -5,34 +5,40 @@ from yt_dlp import YoutubeDL
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 import uuid
+from source import Source
 
 class Downloader:
-    def __init__():
-        pass
-
     downloads = os.path.join(os.path.abspath(os.getcwd()), 'downloads')
 
     @staticmethod
     def download(urls, is_mp3 = False):
-        for url in urls:
-            Downloader.__download(url, is_mp3)
+        items = [Downloader.parse_url(url) for url in urls]
 
-    def __download(url, is_mp3):
-        if url == None or type(url) != str:
-            raise ValueError('Passed url is None or not str')
+        for item in items:
+            yield Downloader.__download(item, is_mp3)
 
+    def parse_url(url):
         try:
             parsed_url = urllib.parse.urlparse(url)
-        except Exception:
+            if parsed_url.netloc in ['www.youtube.com', 'youtu.be']:
+                return url, Source.YouTube
+            else:
+                raise ValueError(f'Source of {url} is not supported')
+        except:
             raise ValueError(f'An error occured while parsing url:{url} | {traceback.format_exc()}')
 
-        print(f'downloading {url}')
+    def __download(item, is_mp3):
+        url, source = item
 
-        if parsed_url.netloc in ['www.youtube.com', 'youtu.be']:
-            Downloader.download_yt(url, is_mp3)
+        print(f'Downloading {url}')
+
+        if source == Source.YouTube:
+            return Downloader.__download_yt(url, is_mp3)
+        else:   
+            raise ValueError(f'Url {url} was not processed')
 
     @staticmethod
-    def download_yt(url, is_mp3):
+    def __download_yt(url, is_mp3):
         if is_mp3:
             return Downloader.__get_yt_mp3(url)
         else:
@@ -83,7 +89,9 @@ class Downloader:
 
 
 def main():
-    Downloader.download(['https://www.youtube.com/watch?v=PI-cESvGlKc&ab_channel=CloserToTruth'], True)
+    urls = ['https://www.youtube.com/watch?v=PI-cESvGlKc&ab_channel=CloserToTruth']
+    for file in Downloader.download(urls, True):
+        print(file)
 
 
 if __name__ == '__main__':
