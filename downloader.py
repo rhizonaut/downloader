@@ -6,38 +6,64 @@ from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 import uuid
 from source import Source
+import requests
+import mimetypes
+from item import Item
+from bandcamp_dl import BandcampDownloader
+from bandcamp_dl import Bandcamp
 
 class Downloader:
     downloads = os.path.join(os.path.abspath(os.getcwd()), 'downloads')
 
     @staticmethod
     def download(urls, is_mp3 = False):
-        items = [Downloader.parse_url(url) for url in urls]
+        items = [Downloader.__get_item(url, is_mp3) for url in urls]
 
         for item in items:
             yield Downloader.__download(item, is_mp3)
 
-    def parse_url(url):
+
+    def __get_item(url, is_mp3):
+        response = requests.get(url, allow_redirects=True)
+        if response.status_code != 200:
+            raise ValueError(f'Url:{url} returns error code')
+            
         try:
             parsed_url = urllib.parse.urlparse(url)
-            if parsed_url.netloc in ['www.youtube.com', 'youtu.be']:
-                return url, Source.YouTube
-            else:
-                raise ValueError(f'Source of {url} is not supported')
         except:
             raise ValueError(f'An error occured while parsing url:{url} | {traceback.format_exc()}')
+        
+        if parsed_url.netloc in ['www.youtube.com', 'youtu.be']:
+            return Item(url, Source.YouTube, is_mp3, response) 
+        elif 'bandcamp.com' in parsed_url.netloc:
+            return Item(url, Source.Bandcamp, is_mp3, response)
+        else:
+            return Item(url, Source.UrlFile, is_mp3, response)
+
 
     def __download(item, is_mp3):
-        url, source = item
+        print(f'Downloading {item.url}')
 
-        print(f'Downloading {url}')
-
-        if source == Source.YouTube:
-            return Downloader.__download_yt(url, is_mp3)
+        if item.source == Source.YouTube:
+            return Downloader.__download_yt(item.url, is_mp3)
+        elif item.source == Source.UrlFile:
+            return Downloader.__download_url(item)
         else:   
-            raise ValueError(f'Url {url} was not processed')
+            raise ValueError(f'Url {item.url} was not processed')
 
-    @staticmethod
+
+    # def __download_bandcamp(item):
+    #     bd = BandcampDownloader(url=item.url)
+    #     bd.start()
+
+
+    def __download_url(item):
+        content_type = item.response.headers['content-type']
+        ext = mimetypes.guess_extension(content_type)
+        file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}.{ext}')
+        open(file_name, 'wb').write(item.response.content)
+
+
     def __download_yt(url, is_mp3):
         if is_mp3:
             return Downloader.__get_yt_mp3(url)
@@ -58,13 +84,15 @@ class Downloader:
 
         return file_name
 
+
     def __get_yt_mp4(url):
         file_name, _ = Downloader.__get_yt_file(url, False)
         return file_name
 
+
     def __get_yt_file(url, is_mp3):
         if is_mp3:
-            file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}' + '.mp3')
+            file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}.mp3')
             ydl_opts = {
             'noplaylist': True,
             'outtmpl': file_name,
@@ -89,7 +117,7 @@ class Downloader:
 
 
 def main():
-    urls = ['https://www.youtube.com/watch?v=PI-cESvGlKc&ab_channel=CloserToTruth']
+    urls = ['https://t4.bcbits.com/stream/768defd85435ba93ba46657d6212a45e/mp3-128/2503872319?p=0&ts=1658344844&t=fd07091aca227d8e4e1e7c1863268e0e8e3184fe&token=1658344844_f86885f65f0d54a68f22194706f0454d582e0539']
     for file in Downloader.download(urls, True):
         print(file)
 
