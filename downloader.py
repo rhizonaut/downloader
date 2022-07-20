@@ -9,13 +9,16 @@ from source import Source
 import requests
 import mimetypes
 from item import Item
-from bandcamp_dl import BandcampDownloader
-from bandcamp_dl import Bandcamp
+import subprocess
+# bandcamp-dl is required
 
+# TODO: Unify downloading process:
+# 1. url parsing 2. downloading file from source 3. post-download processing
+# all downloaded items to separated dir
+# add archiving
 class Downloader:
     downloads = os.path.join(os.path.abspath(os.getcwd()), 'downloads')
 
-    @staticmethod
     def download(urls, is_mp3 = False):
         items = [Downloader.__get_item(url, is_mp3) for url in urls]
 
@@ -27,14 +30,14 @@ class Downloader:
         response = requests.get(url, allow_redirects=True)
         if response.status_code != 200:
             raise ValueError(f'Url:{url} returns error code')
-            
+
         try:
             parsed_url = urllib.parse.urlparse(url)
         except:
             raise ValueError(f'An error occured while parsing url:{url} | {traceback.format_exc()}')
-        
+
         if parsed_url.netloc in ['www.youtube.com', 'youtu.be']:
-            return Item(url, Source.YouTube, is_mp3, response) 
+            return Item(url, Source.YouTube, is_mp3, response)
         elif 'bandcamp.com' in parsed_url.netloc:
             return Item(url, Source.Bandcamp, is_mp3, response)
         else:
@@ -46,22 +49,36 @@ class Downloader:
 
         if item.source == Source.YouTube:
             return Downloader.__download_yt(item.url, is_mp3)
+        elif item.source == Source.Bandcamp:
+            return Downloader.__download_bandcamp(item.url)
         elif item.source == Source.UrlFile:
             return Downloader.__download_url(item)
-        else:   
+        else:
             raise ValueError(f'Url {item.url} was not processed')
 
 
-    # def __download_bandcamp(item):
-    #     bd = BandcampDownloader(url=item.url)
-    #     bd.start()
+    def __download_bandcamp(url):
+        dir = os.path.join(Downloader.downloads, f'{uuid.uuid4()}')
+        os.mkdir(dir)
+        subprocess.run(
+            [
+                f'bandcamp-dl',
+                '--template=%{artist}-%{album}-%{track} - %{title}',
+                '-n',
+                f'--base-dir={dir}',
+                url
+            ])
+
+        return dir
 
 
     def __download_url(item):
         content_type = item.response.headers['content-type']
         ext = mimetypes.guess_extension(content_type)
-        file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}.{ext}')
-        open(file_name, 'wb').write(item.response.content)
+        dir = os.path.join(Downloader.downloads, f'{uuid.uuid4()}')
+        open(os.path.join(dir, f'{uuid.uuid4()}.{ext}'), 'wb').write(item.response.content)
+
+        return dir
 
 
     def __download_yt(url, is_mp3):
@@ -89,13 +106,12 @@ class Downloader:
         file_name, _ = Downloader.__get_yt_file(url, False)
         return file_name
 
-
     def __get_yt_file(url, is_mp3):
+        dir = os.path.join(Downloader.downloads, f'{uuid.uuid4()}', '%(title)s.%(ext)s')
         if is_mp3:
-            file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}.mp3')
             ydl_opts = {
             'noplaylist': True,
-            'outtmpl': file_name,
+            'outtmpl': dir,
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -104,22 +120,30 @@ class Downloader:
             }],
             }
             with YoutubeDL(ydl_opts) as ydl:
-                return file_name, ydl.extract_info(url, download=True)
+                return dir, ydl.extract_info(url, download=True)
         else:
-            file_name = os.path.join(Downloader.downloads, f'{uuid.uuid4()}' + '.mp4')
             ydl_opts = {
             'noplaylist': True,
-            'outtmpl': file_name,
+            'outtmpl': dir,
             'format': '18',
             }
             with YoutubeDL(ydl_opts) as ydl:
-                return file_name, ydl.extract_info(url, download=True)
+                return dir, ydl.extract_info(url, download=True)
+
+
+def get_files(urls):
+    files = []
+
+    for dir in Downloader.download(urls, True):
+        files.append([os.path.join(dir, file) for file in os.listdir(dir)])
+
+    return files
 
 
 def main():
-    urls = ['https://t4.bcbits.com/stream/768defd85435ba93ba46657d6212a45e/mp3-128/2503872319?p=0&ts=1658344844&t=fd07091aca227d8e4e1e7c1863268e0e8e3184fe&token=1658344844_f86885f65f0d54a68f22194706f0454d582e0539']
-    for file in Downloader.download(urls, True):
-        print(file)
+    urls = ['https://tezteztez.bandcamp.com/album/a']
+    files = get_files(urls)
+    print(files)
 
 
 if __name__ == '__main__':

@@ -6,3 +6,5 @@ class Item:
         self.source = source
         self.is_mp3 = is_mp3
         self.response = response
+        self.file_name = None
+        self.title = None
