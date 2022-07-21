@@ -8,14 +8,14 @@ from bc_item import BCItem
 import uuid
 # bandcamp-dl is required
 
-# TODO: Unify downloading process:
-# 1. url parsing 2. downloading file from source 3. post-download processing
-# all downloaded items to separated dir
+# TODO
 # add archiving
-# add is_create_subfolder and pass it into items
+# add set_options() which sets them only if idle
+# pass file name into items
 class Downloader(object):
-    downloads = os.path.join(os.path.abspath(os.getcwd()), 'downloads')
+    __downloads = os.path.join(os.path.abspath(os.getcwd()), 'downloads')
 
+    # TODO someday make public after making download() return filepaths
     __is_create_subdirs = False
 
     def download(urls, is_mp3 = False):
