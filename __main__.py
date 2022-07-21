@@ -1,4 +1,5 @@
 from downloader import Downloader
+from url_item import UrlItem
 import os
 
 def get_files(urls):
@@ -11,6 +12,8 @@ def get_files(urls):
 
 
 def main():
+    # UrlItem.download(folder=os.path.join(os.path.abspath(os.getcwd()), 'downloads'), url='https://sun9-85.userapi.com/impg/-FT9okSKKmYgZE566TiJ9vX4oChKboTsa4cTRw/PTyC8rNDi6s.jpg?size=964x1280&quality=96&sign=2d15eac6a9323b9231c02fcc109adbc6&type=album')
+    # return
     urls = [
         'https://tezteztez.bandcamp.com/album/a', 'https://youtu.be/1zRkbWpJ988?list=RD1zRkbWpJ988', 
     'https://sun9-85.userapi.com/impg/-FT9okSKKmYgZE566TiJ9vX4oChKboTsa4cTRw/PTyC8rNDi6s.jpg?size=964x1280&quality=96&sign=2d15eac6a9323b9231c02fcc109adbc6&type=album']

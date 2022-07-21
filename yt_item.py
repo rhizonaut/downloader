@@ -10,18 +10,31 @@ class YTItem(object):
         self.is_mp3 = is_mp3
         self.folder = folder
 
-    def download(self):
-        return self.__download_yt(self.url, self.is_mp3)
 
-    def __download_yt(self, url, is_mp3):
+    def download(self=None, folder=None, url=None, is_mp3=None):
+        if self:
+            return YTItem.__download_yt(self.folder, self.url, self.is_mp3)
+
+        if folder == None:
+            raise ValueError(f'folder argument should be not None')
+        
+        if url == None:
+            raise ValueError(f'url argument should be not None')
+
+        if is_mp3 == None:
+            raise ValueError(f'is_mp3 argument should be not None')
+
+        return YTItem.__download_yt(folder, url, is_mp3)
+
+    def __download_yt(folder, url, is_mp3):
         if is_mp3:
-            return self.__get_yt_mp3(url)
+            return YTItem.__get_yt_mp3(folder, url)
         else:
-            return self.__get_yt_mp4(url)
+            return YTItem.__get_yt_mp4(folder, url)
 
 
-    def __get_yt_mp3(self, url):
-        result_folder, info = self.__get_yt_file(url, True)
+    def __get_yt_mp3(folder, url):
+        result_folder, info = YTItem.__get_yt_file(folder, url, True)
         # TODO: should be working for list of files
         file_name = os.path.join(result_folder, os.listdir(result_folder)[0])
         title = info.get("title", None)
@@ -36,16 +49,15 @@ class YTItem(object):
         return result_folder
 
 
-    def __get_yt_mp4(self, url):
-        file_name, _ = self.__get_yt_file(url, False)
+    def __get_yt_mp4(folder, url):
+        file_name, _ = YTItem.__get_yt_file(folder, url, False)
         return file_name
 
-    def __get_yt_file(self, url, is_mp3):
-        result_folder = os.path.join(self.folder, f'{uuid.uuid4()}')
+    def __get_yt_file(folder, url, is_mp3):
         if is_mp3:
             ydl_opts = {
             'noplaylist': True,
-            'outtmpl': os.path.join(result_folder, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(folder, '%(title)s.%(ext)s'),
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -54,12 +66,12 @@ class YTItem(object):
             }],
             }
             with YoutubeDL(ydl_opts) as ydl:
-                return result_folder, ydl.extract_info(url, download=True)
+                return folder, ydl.extract_info(url, download=True)
         else:
             ydl_opts = {
             'noplaylist': True,
-            'outtmpl': os.path.join(self.folder, f'{uuid.uuid4()}', '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(folder, f'{uuid.uuid4()}', '%(title)s.%(ext)s'),
             'format': '18',
             }
             with YoutubeDL(ydl_opts) as ydl:
-                return result_folder, ydl.extract_info(url, download=True)
+                return folder, ydl.extract_info(url, download=True)

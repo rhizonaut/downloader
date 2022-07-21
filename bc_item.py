@@ -1,25 +1,33 @@
 import os
 import subprocess
-import uuid
 
 class BCItem(object):
     def __init__(self, url, folder):
         self.url = url
         self.folder = folder
 
-    def download(self):
-        return self.__download(self.url)
+    def download(self=None, folder=None, url=None):
+        if self:
+            return BCItem.__download(self.url, self.folder)
+        
+        if folder == None:
+            raise ValueError(f'folder argument should be not None')
+        
+        if url == None:
+            raise ValueError(f'url argument should be not None')
 
-    def __download(self, url):
-        result_folder = os.path.join(self.folder, f'{uuid.uuid4()}')
-        os.mkdir(result_folder)
+        return BCItem.__download(url, folder)
+
+
+    def __download(url, folder):
+        os.mkdir(folder)
         subprocess.run(
             [
                 f'bandcamp-dl',
                 '--template=%{artist} - %{title}',
                 '-n',
-                f'--base-dir={result_folder}',
+                f'--base-dir={folder}',
                 url
             ])
 
-        return result_folder
+        return folder
